@@ -76,6 +76,7 @@ from azure.ai.ml.operations import (
     WorkspaceConnectionsOperations,
     WorkspaceHubOperations,
     WorkspaceOperations,
+    ComputePolicyOperations,
 )
 from azure.ai.ml.operations._code_operations import CodeOperations
 from azure.ai.ml.operations._feature_set_operations import FeatureSetOperations
@@ -129,17 +130,15 @@ class MLClient:
             :dedent: 8
             :caption: Creating the MLClient with Azure Identity credentials.
 
-    .. note:: Additional Note
-
-       When using sovereign domains (i.e. any cloud other than AZURE_PUBLIC_CLOUD), you must pass in the cloud name in
-       kwargs and you must use an authority with DefaultAzureCredential.
+    .. admonition:: Example:
 
        .. literalinclude:: ../samples/ml_samples_authentication.py
             :start-after: [START create_ml_client_sovereign_cloud]
             :end-before: [END create_ml_client_sovereign_cloud]
             :language: python
             :dedent: 8
-            :caption: Creating the MLClient with Azure Identity credentials and a sovereign cloud.
+            :caption: When using sovereign domains (i.e. any cloud other than AZURE_PUBLIC_CLOUD), you must pass in the
+                cloud name in kwargs and you must use an authority with DefaultAzureCredential.
     """
 
     # pylint: disable=client-method-missing-type-annotations
@@ -372,6 +371,13 @@ class MLClient:
         )
         self._operation_container.add(AzureMLResourceType.WORKSPACE, self._workspaces)
 
+        self._policies = ComputePolicyOperations(
+            self._operation_scope,
+            self._operation_config,
+            self._service_client_06_2023_preview,
+        )
+        self._operation_container.add(AzureMLResourceType.POLICIES, self._policies)
+
         self._workspace_outbound_rules = WorkspaceOutboundRuleOperations(
             self._operation_scope,
             self._service_client_06_2023_preview,
@@ -601,6 +607,7 @@ class MLClient:
         format:
 
         .. code-block:: json
+
             {
                 "subscription_id": "<subscription-id>",
                 "resource_group": "<resource-group>",
@@ -634,15 +641,13 @@ class MLClient:
                 :dedent: 8
                 :caption: Creating an MLClient from a file named "config.json" in directory "src".
 
-        .. admonition:: Example:
-
             .. literalinclude:: ../samples/ml_samples_authentication.py
                 :start-after: [START create_ml_client_from_config_custom_filename]
                 :end-before: [END create_ml_client_from_config_custom_filename]
                 :language: python
                 :dedent: 8
                 :caption: Creating an MLClient from a file named "team_workspace_configuration.json" in the current
-                directory.
+                    directory.
         """
 
         path = Path(".") if path is None else Path(path)
@@ -742,7 +747,6 @@ class MLClient:
         return self._workspace_outbound_rules
 
     @property
-    @experimental
     def registries(self) -> RegistryOperations:
         """A collection of registry-related operations.
 
@@ -780,6 +784,10 @@ class MLClient:
         :rtype: HubOperations
         """
         return self._workspace_hubs
+
+    @property
+    def policies(self) -> ComputePolicyOperations:
+        return self._policies
 
     @property
     @experimental
@@ -1016,15 +1024,6 @@ class MLClient:
         :return: The created or updated resource.
         :rtype: typing.Union[~azure.ai.ml.entities.Job, ~azure.ai.ml.entities.Model
             , ~azure.ai.ml.entities.Environment, ~azure.ai.ml.entities.Component, ~azure.ai.ml.entities.Datastore]
-
-        .. admonition:: Example:
-
-            .. literalinclude:: ../samples/ml_samples_misc.py
-                :start-after: [START ml_client_create_or_update]
-                :end-before: [END ml_client_create_or_update]
-                :language: python
-                :dedent: 8
-                :caption: Creating a resource asynchronously via MLClient.
         """
 
         return _create_or_update(entity, self._operation_container.all_operations, **kwargs)
@@ -1061,15 +1060,6 @@ class MLClient:
             , ~azure.ai.ml.entities.Registry, ~azure.ai.ml.entities.Compute, ~azure.ai.ml.entities.OnlineDeployment
             , ~azure.ai.ml.entities.OnlineEndpoint, ~azure.ai.ml.entities.BatchDeployment
             , ~azure.ai.ml.entities.BatchEndpoint, ~azure.ai.ml.entities.Schedule]]
-
-        .. admonition:: Example:
-
-            .. literalinclude:: ../samples/ml_samples_misc.py
-                :start-after: [START ml_client_begin_create_or_update]
-                :end-before: [END ml_client_begin_create_or_update]
-                :language: python
-                :dedent: 8
-                :caption: Creating a resource asynchronously via MLClient.
         """
 
         return _begin_create_or_update(entity, self._operation_container.all_operations, **kwargs)

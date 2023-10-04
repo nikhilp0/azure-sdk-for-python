@@ -242,6 +242,8 @@ class AzureMLResourceType:
     """Feature store resource type."""
     WORKSPACE_HUB = "workspace_hub"
     """WorkspaceHub resource type."""
+    POLICIES = "policies"
+    """Policies resource type."""
 
     NAMED_TYPES = {
         JOB,
@@ -251,6 +253,7 @@ class AzureMLResourceType:
         ONLINE_DEPLOYMENT,
         DATASTORE,
         SCHEDULE,
+        POLICIES,
     }
     VERSIONED_TYPES = {MODEL, DATA, CODE, ENVIRONMENT, COMPONENT, FEATURE_SET, FEATURE_STORE_ENTITY}
 
@@ -481,6 +484,7 @@ class YAMLRefDocLinks:
     FEATURE_SET = "https://aka.ms/ml-cli-v2-featureset-yaml-reference"
     FEATURE_STORE_ENTITY = "https://aka.ms/ml-cli-v2-featurestore-entity-yaml-reference"
     WORKSPACEHUB = "https://aka.ms/ml-cli-v2-workspace-hub-entity-yaml-reference"
+    POLICY = "https://aka.ms/ml-cli-v2-workspace-hub-entity-yaml-reference"
 
 
 class YAMLRefDocSchemaNames:

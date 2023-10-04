@@ -6,7 +6,7 @@ import logging
 import warnings
 from os import PathLike
 from pathlib import Path
-from typing import IO, AnyStr, Dict, List, Optional, Type, Union
+from typing import IO, AnyStr, Dict, List, Optional, Type, Union, TypeVar
 
 from marshmallow import ValidationError
 
@@ -42,7 +42,10 @@ from azure.ai.ml.entities._validation import PathAwareSchemaValidatableMixin, Va
 from azure.ai.ml.entities._workspace.connections.workspace_connection import WorkspaceConnection
 from azure.ai.ml.entities._workspace.workspace import Workspace
 from azure.ai.ml.entities._workspace_hub.workspace_hub import WorkspaceHub
+from azure.ai.ml.entities._policies.policy import Policy, PolicyDefinition, PolicyEffect
 from azure.ai.ml.exceptions import ErrorCategory, ErrorTarget, ValidationErrorType, ValidationException
+
+T = TypeVar("T")
 
 module_logger = logging.getLogger(__name__)
 
@@ -127,8 +130,12 @@ def load_common(
 
 
 def _try_load_yaml_dict(source: Union[str, PathLike, IO[AnyStr]]) -> dict:
-    yaml_dict = load_yaml(source)
-    if yaml_dict is None:  # This happens when a YAML is empty.
+    return _try_load_yaml(source, dict)
+
+
+def _try_load_yaml(source: Union[str, PathLike, IO[AnyStr]], data_type: Type[T]) -> T:
+    yaml_obj = load_yaml(source)
+    if yaml_obj is None:  # This happens when a YAML is empty.
         msg = "Target yaml file is empty"
         raise ValidationException(
             message=msg,
@@ -137,16 +144,17 @@ def _try_load_yaml_dict(source: Union[str, PathLike, IO[AnyStr]]) -> dict:
             error_category=ErrorCategory.USER_ERROR,
             error_type=ValidationErrorType.CANNOT_PARSE,
         )
-    if not isinstance(yaml_dict, dict):  # This happens when a YAML file is mal formatted.
-        msg = "Expect dict but get {} after parsing yaml file"
+
+    if not isinstance(yaml_obj, data_type):
+        msg = "Expect {} but get {} after parsing yaml file"
         raise ValidationException(
-            message=msg.format(type(yaml_dict)),
+            message=msg.format(data_type.__name__, type(yaml_obj)),
             target=ErrorTarget.COMPONENT,
-            no_personal_data_message=msg.format(type(yaml_dict)),
+            no_personal_data_message=msg.format(data_type.__name__, type(yaml_obj)),
             error_category=ErrorCategory.USER_ERROR,
             error_type=ValidationErrorType.CANNOT_PARSE,
         )
-    return yaml_dict
+    return yaml_obj
 
 
 def _load_common_raising_marshmallow_error(
@@ -185,7 +193,7 @@ def load_job(
 
     .. admonition:: Example:
 
-        .. literalinclude:: ../../../../samples/ml_samples_misc.py
+        .. literalinclude:: ../samples/ml_samples_misc.py
             :start-after: [START load_job]
             :end-before: [END load_job]
             :language: python
@@ -346,7 +354,7 @@ def load_compute(
 
     .. admonition:: Example:
 
-        .. literalinclude:: ../../../../samples/ml_samples_compute.py
+        .. literalinclude:: ../samples/ml_samples_compute.py
             :start-after: [START load_compute]
             :end-before: [END load_compute]
             :language: python
@@ -384,7 +392,7 @@ def load_component(
 
     .. admonition:: Example:
 
-        .. literalinclude:: ../../../../samples/ml_samples_component_configurations.py
+        .. literalinclude:: ../samples/ml_samples_component_configurations.py
             :start-after: [START configure_load_component]
             :end-before: [END configure_load_component]
             :language: python
@@ -438,7 +446,7 @@ def load_model(
 
     .. admonition:: Example:
 
-        .. literalinclude:: ../../../../samples/ml_samples_misc.py
+        .. literalinclude:: ../samples/ml_samples_misc.py
             :start-after: [START load_model]
             :end-before: [END load_model]
             :language: python
@@ -848,6 +856,7 @@ def load_workspace_hub(
     **kwargs,
 ) -> WorkspaceHub:
     """Load a WorkspaceHub object from a yaml file.
+
     :param source: The local yaml source of a WorkspaceHub. Must be either a
         path to a local file, or an already-open file.
         If the source is a path, it will be open and read.
@@ -895,7 +904,7 @@ def load_model_package(
 
     .. admonition:: Example:
 
-        .. literalinclude:: ../../../../samples/ml_samples_misc.py
+        .. literalinclude:: ../samples/ml_samples_misc.py
             :start-after: [START load_model_package]
             :end-before: [END load_model_package]
             :language: python
@@ -934,3 +943,18 @@ def load_feature_set_backfill_request(
     :rtype: FeatureSetBackfillRequest
     """
     return load_common(FeatureSetBackfillRequest, source, relative_origin, **kwargs)
+
+
+def load_policies(source: Union[str, PathLike, IO[AnyStr]]) -> [Policy]:
+    yaml_list = _try_load_yaml(source, list)
+    policies = []
+
+    for item in yaml_list:
+        scope = item["scope"]
+        rules = item["policies"]
+        for rule in rules:
+            rule["definition"] = PolicyDefinition.get(rule["definition"])
+            rule["effect"] = PolicyEffect[rule["effect"].title()]
+            rule["scope"] = scope
+            policies.append(Policy(**rule))
+    return policies
